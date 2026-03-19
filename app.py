@@ -19,7 +19,8 @@ app.config["DEBUG"] = DEBUG
 def get_db():
     """取得當前請求的資料庫連線"""
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
+        db_path = app.config.get("DATABASE", DATABASE)
+        g.db = sqlite3.connect(db_path)
         g.db.row_factory = sqlite3.Row
     return g.db
 
