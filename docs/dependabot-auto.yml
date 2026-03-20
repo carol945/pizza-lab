@@ -1,0 +1,104 @@
+# Dependabot 自動合併規範文件
+# 對應流程: .github/workflows/dependabot-auto.yml
+
+spec:
+  name: dependabot-auto
+  display_name: Dependabot 自動合併檢查
+  version: 1.0.0
+  owner: devsecops-team
+  status: active
+  last_updated: "2026-03-20"
+
+purpose:
+  description: >-
+    針對 Dependabot 建立的相依套件更新 Pull Request，
+    在符合標籤白名單與分支保護條件下自動啟用 auto-merge，
+    降低維護成本並加速低風險更新導入。
+  goals:
+    - 縮短依賴更新從提出到合併的時間
+    - 維持必要審查與檢查門檻
+    - 避免非 Dependabot PR 被誤自動合併
+
+workflow_binding:
+  file: .github/workflows/dependabot-auto.yml
+  trigger_events:
+    - pull_request_target.opened
+    - pull_request_target.synchronize
+    - pull_request_target.reopened
+    - pull_request_target.ready_for_review
+    - workflow_dispatch
+
+eligibility_rules:
+  actor_requirement:
+    - github.event.pull_request.user.login 必須為 dependabot[bot]
+  pr_state_requirement:
+    - PR 不可為 draft
+  label_allow_list:
+    - dependencies
+    - security
+    - dependabot
+    - dependencies:patch
+    - dependencies:minor
+  behavior_if_not_eligible:
+    - 僅記錄 notice，不啟用 auto-merge
+
+permissions:
+  minimum_required:
+    contents: write
+    pull-requests: write
+  notes:
+    - 使用 GITHUB_TOKEN 執行，不需額外個人存取權杖
+
+merge_policy:
+  mode: squash
+  auto_merge_enablement:
+    - 使用 GitHub GraphQL enablePullRequestAutoMerge
+  required_before_merge:
+    - 分支保護規則下的必要檢查全部通過
+    - 必要審查數量達成（若倉庫有設定）
+  blocked_cases:
+    - 缺少白名單標籤
+    - PR 轉為 draft
+    - 分支保護檢查未通過
+
+comment_policy:
+  marker: "<!-- dependabot-auto-merge -->"
+  behavior:
+    - 若存在同 marker 評論則更新
+    - 若不存在則建立新評論
+  message:
+    - Auto-merge is enabled for this Dependabot PR. It will merge after required checks and reviews pass.
+
+security_controls:
+  controls:
+    - 僅針對 dependabot[bot] 來源啟用
+    - 透過標籤白名單限制自動合併範圍
+    - 依賴分支保護規則阻擋高風險變更直接合併
+  risks:
+    - 標籤被誤加可能導致不預期 auto-merge
+  mitigations:
+    - 由維護者管控標籤權限
+    - 針對 major 更新不加入白名單標籤
+
+operations:
+  observability:
+    - 於 Actions log 顯示是否啟用 auto-merge
+    - 於 PR 留言可追蹤目前自動合併狀態
+  rollback:
+    - 移除 PR 白名單標籤
+    - 將 PR 轉為 draft
+    - 在 PR 頁面手動取消 auto-merge
+
+acceptance_criteria:
+  functional:
+    - Dependabot PR 且符合白名單標籤時可自動啟用 auto-merge
+    - 不符合條件的 PR 不應啟用 auto-merge
+    - PR 中應可看到統一格式的狀態留言
+  compliance:
+    - 不得繞過倉庫既有分支保護規則
+    - 不得對非 Dependabot PR 啟用 auto-merge
+
+future_improvements:
+  - 新增以更新層級區分策略（patch 自動、minor 需 1 review）
+  - 新增套件風險評分（高風險套件一律人工審查）
+  - 將執行結果彙整至每週維運報表
