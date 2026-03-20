@@ -1,0 +1,107 @@
+name: Code Review Suggestions
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  suggest-review-items:
+    name: Suggest Review Checklist
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 取得原始碼
+        uses: actions/checkout@v4
+
+      - name: 產生 Code Review 建議內容
+        shell: bash
+        run: |
+          cat <<'EOF' > review_suggestions.md
+          <!-- code-review-suggestions -->
+          ## Code Review 建議清單
+
+          以下清單可協助 Reviewer 快速聚焦於高風險與高價值檢查項目。
+
+          ### 1. 功能與邏輯正確性
+          - 是否完整覆蓋需求與 edge cases？
+          - 是否有可能造成訂單流程中斷（下單、狀態查詢、成功頁導向）？
+          - 是否有狀態切換錯誤、重複提交或資料遺失風險？
+
+          ### 2. 安全性
+          - 使用者輸入是否有驗證與清理（特別是 order id、表單欄位）？
+          - SQL 操作是否使用參數化查詢，避免 SQL Injection？
+          - 模板渲染是否避免 XSS（確認未使用不安全的 `|safe`）？
+          - 錯誤訊息是否避免洩漏內部路徑或敏感資訊？
+
+          ### 3. 測試品質
+          - 是否新增或調整對應測試（成功路徑 + 失敗路徑）？
+          - 是否涵蓋輸入驗證、例外處理與資料庫互動？
+          - 測試命名是否能清楚描述行為？
+
+          ### 4. 可維護性
+          - 是否有重複邏輯可抽出？
+          - 命名是否清楚，函式責任是否單一？
+          - 是否保留不必要註解、除錯碼或暫時性邏輯？
+
+          ### 5. 前端與使用者體驗
+          - 表單錯誤提示是否清楚、可操作？
+          - 重要流程頁面（首頁、下單、狀態查詢）在手機與桌面是否正常？
+          - CSS 變更是否影響既有版面或可讀性？
+
+          ### 6. 文件與部署影響
+          - `README`、設定檔與初始化步驟是否需要同步更新？
+          - 是否影響 CI、資料庫 schema 或既有部署流程？
+
+          ---
+          建議 Reviewer 至少抽查：
+          - 1 個主要使用情境
+          - 1 個錯誤情境
+          - 1 個安全性情境（輸入/SQL/模板）
+          EOF
+
+      - name: 在 PR 留言（建立或更新）
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- code-review-suggestions -->';
+            const body = fs.readFileSync('review_suggestions.md', 'utf8');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const botComment = comments.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body,
+              });
+              core.info('Updated existing review suggestion comment.');
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+              core.info('Created new review suggestion comment.');
+            }
