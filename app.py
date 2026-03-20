@@ -5,11 +5,22 @@ SpeedyPizza — 線上披薩訂購系統
 
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, g
-from config import SECRET_KEY, DATABASE, DEBUG
+from config import SECRET_KEY, DATABASE, DEBUG, APP_VERSION, GITHUB_REPO_URL
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["DEBUG"] = DEBUG
+app.config["APP_VERSION"] = APP_VERSION
+app.config["GITHUB_REPO_URL"] = GITHUB_REPO_URL
+
+
+@app.context_processor
+def inject_app_meta():
+    """提供全站模板可用的版本與專案資訊"""
+    return {
+        "app_version": app.config["APP_VERSION"],
+        "github_repo_url": app.config["GITHUB_REPO_URL"],
+    }
 
 
 # ============================================================

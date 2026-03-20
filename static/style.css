@@ -279,3 +279,27 @@ footer {
     color: #999;
     font-size: 0.9rem;
 }
+
+.github-version {
+    margin-top: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #666;
+    text-decoration: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    background: #fff;
+}
+
+.github-version:hover {
+    color: #111;
+    border-color: #bbb;
+}
+
+.github-version svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}

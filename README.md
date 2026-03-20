@@ -1,5 +1,7 @@
 # 🍕 SpeedyPizza — 線上披薩訂購系統
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/jeff1121/pizza-lab?label=version&logo=github)
+
 SpeedyPizza 是一個使用 Python Flask 和 SQLite 建立的線上披薩訂購系統。
 使用者可以瀏覽菜單、下單訂購，並透過訂單編號查詢訂單狀態。
 
